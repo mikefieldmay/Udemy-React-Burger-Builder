@@ -7,7 +7,6 @@ const navigationItem = (props) => (
         <a className={props.active ? classes.active : null}
             href={props.link}>
             {props.children}</a>
-            {console.log(props.active)}
     </li>
 )
  
