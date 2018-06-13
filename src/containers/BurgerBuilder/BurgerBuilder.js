@@ -6,6 +6,7 @@ import BuildControls from '../../components/Burger/BuildControls/BuildControls';
 import Modal from '../../components/UI/Modal/Modal';
 import OrderSummary from '../../components/Burger/OrderSummary/OrderSummary';
 import Spinner from '../../components/UI/Spinner/Spinner';
+import withErrorHandler from '../../hoc/withErrorHandler/withErrorHandler'
 
 import axios from '../../axios-orders';
 
@@ -18,16 +19,21 @@ const INGREDIENT_PRICES = {
 
 class BurgerBuilder extends Component {
     state = {
-        ingredients: {
-            bacon: 0,
-            cheese: 0,
-            meat: 0,
-            salad: 0
-        },
         totalPrice: 4,
         purchasable: false,
         purchasing: false,
-        loading: false
+        loading: false,
+        error: null
+    }
+
+    componentDidMount() {
+        axios.get('/ingredients.json')
+            .then(res => {
+                this.setState({ingredients: res.data});
+            })
+            .catch(err => {
+                this.setState({error: true});
+            });
     }
 
     updatePurchaseState(ingredients) {
@@ -115,21 +121,17 @@ class BurgerBuilder extends Component {
             disabledInfo[key] = disabledInfo[key] <= 0;
         }
 
-        let orderSummary = <OrderSummary
-                                price={this.state.totalPrice}
-                                purchaseContinued={this.purchaseContinueHandler}
-                                purchaseCancelled={this.purchaseCancelHandler}
-                                ingredients={this.state.ingredients}
-                                show={this.state.purchasing}
-                                />;
+        let orderSummary = null;
+
         if (this.state.loading) {
             orderSummary = <Spinner />;
         }
-        return ( 
-            <Aux>
-                <Modal show={this.state.purchasing} modalClosed={this.purchaseCancelHandler}>
-                    {orderSummary}
-                </Modal>
+
+        let burger = this.state.error ? <p>Ingredients can't be shown</p>: <Spinner />
+
+        if (this.state.ingredients) {
+            burger = (
+                <Aux>
                 <Burger ingredients={this.state.ingredients}/>
                 <BuildControls 
                     price={this.state.totalPrice}
@@ -138,9 +140,26 @@ class BurgerBuilder extends Component {
                     disabled={disabledInfo}
                     purchasable={this.state.purchasable}
                     ordered={this.purchaseHandler}/>
+                </Aux>
+            )
+            orderSummary = <OrderSummary
+                                price={this.state.totalPrice}
+                                purchaseContinued={this.purchaseContinueHandler}
+                                purchaseCancelled={this.purchaseCancelHandler}
+                                ingredients={this.state.ingredients}
+                                show={this.state.purchasing}
+                                />;
+        }
+        
+        return ( 
+            <Aux>
+                <Modal show={this.state.purchasing} modalClosed={this.purchaseCancelHandler}>
+                    {orderSummary}
+                </Modal>
+                {burger}
             </Aux>
         );
     }
 }
 
-export default BurgerBuilder;
+export default withErrorHandler(BurgerBuilder, axios);
